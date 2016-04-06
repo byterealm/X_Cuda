@@ -11,7 +11,7 @@
 #include <list>
 #include <io.h>  
 #include <process.h>  
-#include "Cuda_Matrix.h"
+#include "Cuda_Matrix.cu"
 #include "Cuda_Info.cu"
 
 #include "XType.h"
@@ -27,7 +27,7 @@ string filename_b = filePath + "//" + fname_b + ".raw";
 dim3  Volume_Dimensions = dim3(128, 128, 128);
 
 extern "C"
-void knn_init_nn(void* vol_a, dim3 dim_a, Cuda_X_Matrix& M_a, void* vol_b, dim3 dim_b, Cuda_X_Matrix& M_b, Cuda_X_Matrix& M_ann, XParams para);
+void knn_init_nn( dim3 dim_a, dim3 dim_b, X_Matrix& M_ann, XParams para);
 
 extern "C" void CopyData(const int* volume, cudaExtent volumeSize, int index);
 extern "C" void PrintTexture(dim3 vol_size = dim3(16, 16, 16));
@@ -61,7 +61,7 @@ int main()
 	if (_access(r_path.c_str(), 0))
 	{
 		mkdir(r_path.c_str());
-		printf("result make success£¡\n");
+		printf("result make successï¼\n");
 	}
 
 	para->cores = 1;
@@ -98,11 +98,20 @@ int main()
 	****************************************************************************/
 
 	
-	Cuda_X_Matrix M_a,M_b,M_ann;
-	knn_init_nn(vol_a->data, Volume_Dimensions, M_a, vol_b->data, Volume_Dimensions, M_b, M_ann, *para);
-	VecVol *Matrix_ann =new VecVol(Volume_Dimensions.x, Volume_Dimensions.y, Volume_Dimensions.z, para->knn);
+	X_Matrix M_a, M_b, M_ann;
+	/** \brief	load the volume vol_a. */
+	M_a.GenerateData<int>(Volume_Dimensions);
+	M_a.CopyHost2Device(vol_a);
 
-	CopyDevice2Host(Matrix_ann->data, M_ann, m_Int);
+	/** \brief	laod the volume vol_b. */
+	M_b.GenerateData<int>(Volume_Dimensions);
+	M_b.CopyHost2Device(vol_b);
+
+
+
+	knn_init_nn(Volume_Dimensions, Volume_Dimensions, M_ann, *para);
+	VecVol *Matrix_ann =new VecVol(Volume_Dimensions.x, Volume_Dimensions.y, Volume_Dimensions.z, para->knn);
+	M_ann.CopyDevice2Host(Matrix_ann->data);
 	writeVecVol("G://aa.vec", Matrix_ann);
 
 
